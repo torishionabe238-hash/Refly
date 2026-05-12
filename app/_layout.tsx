@@ -1,6 +1,23 @@
 import { Stack, useRouter, useSegments } from 'expo-router'
-import { View, ActivityIndicator } from 'react-native'
+import { View, ActivityIndicator, Alert, Platform } from 'react-native'
 import { useEffect, useState } from 'react'
+
+// ウェブでは Alert.alert が動かないので window.alert/confirm で代替
+if (Platform.OS === 'web') {
+  (Alert as any).alert = (title: string, message?: string, buttons?: any[]) => {
+    if (!buttons || buttons.length <= 1) {
+      window.alert(message ? `${title}\n\n${message}` : title)
+      buttons?.[0]?.onPress?.()
+    } else {
+      const hasDestructive = buttons.some(b => b.style === 'destructive')
+      const confirmed = window.confirm(message ? `${title}\n\n${message}` : title)
+      const btn = buttons.find(b =>
+        confirmed ? (b.style === 'destructive' || b.style !== 'cancel') : b.style === 'cancel'
+      )
+      btn?.onPress?.()
+    }
+  }
+}
 import { supabase } from '../utils/supabase'
 import { Session } from '@supabase/supabase-js'
 import { ThemeProvider, useTheme } from '../utils/theme'
