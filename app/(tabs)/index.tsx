@@ -1,249 +1,78 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native'
+import { Alert } from 'react-native'
+import { useRouter } from 'expo-router'
 import { useState } from 'react'
 import { supabase } from '../../utils/supabase'
 import * as ImagePicker from 'expo-image-picker'
+import * as FileSystem from 'expo-file-system/legacy'
+import DiaryEditor from '../../components/DiaryEditor'
+import { createDraft, saveDraft } from '../../utils/drafts'
 
 export default function HomeScreen() {
-  const [memo, setMemo] = useState('')
+  const router = useRouter()
+  const [editorKey, setEditorKey] = useState(0)
   const [saving, setSaving] = useState(false)
-  const [photos, setPhotos] = useState<string[]>([])
 
-  const today = new Date().toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
+  const today = new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
+  const todayISO = new Date().toISOString().split('T')[0]
 
-  const pickImage = async () => {
+  const pickImage = async (): Promise<string[]> => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) {
-      Alert.alert('エラー', '写真へのアクセスを許可してください')
-      return
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      quality: 0.8,
-    })
-
-    if (!result.canceled) {
-      const uris = result.assets.map(a => a.uri)
-      setPhotos(prev => [...prev, ...uris])
-    }
+    if (!permission.granted) { Alert.alert('エラー', '写真へのアクセスを許可してください'); return [] }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsMultipleSelection: true, quality: 0.8 })
+    if (result.canceled) return []
+    return result.assets.map(a => a.uri)
   }
 
-  const uploadPhotos = async (userId: string): Promise<string[]> => {
+  const uploadPhotos = async (userId: string, photos: string[]): Promise<string[]> => {
     const urls: string[] = []
-
     for (const uri of photos) {
       const fileName = `${userId}/${Date.now()}.jpg`
-      const response = await fetch(uri)
-      const blob = await response.blob()
-
-      const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result as ArrayBuffer)
-        reader.onerror = reject
-        reader.readAsArrayBuffer(blob)
-      })
-
-      const { error } = await supabase.storage
-        .from('diary-photos')
-        .upload(fileName, arrayBuffer, { contentType: 'image/jpeg' })
-
+      const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' })
+      const binary = atob(base64)
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      const { error } = await supabase.storage.from('diary-photos').upload(fileName, bytes, { contentType: 'image/jpeg' })
       if (!error) {
-        const { data } = supabase.storage
-          .from('diary-photos')
-          .getPublicUrl(fileName)
+        const { data } = supabase.storage.from('diary-photos').getPublicUrl(fileName)
         urls.push(data.publicUrl)
       }
     }
-
     return urls
   }
 
-  const saveDiary = async () => {
-    if (memo.trim() === '') {
-      Alert.alert('エラー', '何か書いてから保存してください')
-      return
-    }
-
-     console.log('メモ内容:', memo)
-  console.log('写真枚数:', photos.length)
-  setSaving(true)
-  console.log('saving開始')
-  
-
+  const handleSave = async (content: string, photos: string[]) => {
+    if (saving) return
     setSaving(true)
-
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) { setSaving(false); return }
-    console.log('user id:', user?.id)
-
-    const photoUrls = photos.length > 0 ? await uploadPhotos(user.id) : []
-
-    const { error } = await supabase
-      .from('diaries')
-      .insert({
-        title: today,
-        content: memo,
-        date: new Date().toISOString().split('T')[0],
-        user_id: user.id,
-        photos: photoUrls,
-      })
-
-    setSaving(false)
-
-    if (error) {
-      Alert.alert('エラー', '保存に失敗しました')
-      console.error(error)
-    } else {
-      setMemo('')
-      setPhotos([])
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) { Alert.alert('エラー', 'ログインが必要です'); return }
+      const photoUrls = photos.length > 0 ? await uploadPhotos(session.user.id, photos) : []
+      const { error } = await supabase.from('diaries').insert({ title: today, content, date: todayISO, user_id: session.user.id, photos: photoUrls })
+      if (error) { Alert.alert('エラー', '保存に失敗しました'); return }
+      setEditorKey(k => k + 1)
+      router.replace('/(tabs)/calendar')
+    } catch (_e) {
+      Alert.alert('エラー', '予期しないエラーが発生しました')
+    } finally {
+      setSaving(false)
     }
   }
 
+  const handleSaveDraft = async (html: string) => {
+    if (html.replace(/<[^>]*>/g, '').trim() === '') { Alert.alert('エラー', '内容を入力してから下書き保存してください'); return }
+    const draft = createDraft(html)
+    await saveDraft(draft)
+    Alert.alert('完了', '下書きを保存しました')
+  }
+
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <ScrollView contentContainerStyle={styles.inner}>
-        <Text style={styles.date}>{today}</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="今日のことを書いてみよう..."
-          placeholderTextColor="#bbb"
-          multiline
-          value={memo}
-          onChangeText={setMemo}
-        />
-
-        {photos.length > 0 && (
-          <ScrollView horizontal style={styles.photoList}>
-            {photos.map((uri, index) => (
-              <View key={index} style={styles.photoWrapper}>
-                <Image source={{ uri }} style={styles.photo} />
-                <TouchableOpacity
-                  style={styles.photoDelete}
-                  onPress={() => setPhotos(prev => prev.filter((_, i) => i !== index))}
-                >
-                  <Text style={styles.photoDeleteText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-
-        <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-          <Text style={styles.photoButtonText}>📷　写真を追加</Text>
-        </TouchableOpacity>
-      </ScrollView>
-
-      <TouchableOpacity
-        style={[styles.button, saving && styles.buttonDisabled]}
-        onPress={saveDiary}
-        disabled={saving}
-      >
-        <Text style={styles.buttonText}>
-          {saving ? '保存中...' : '保存する'}
-        </Text>
-      </TouchableOpacity>
-    </KeyboardAvoidingView>
+    <DiaryEditor
+      key={editorKey}
+      dateLabel={today}
+      saving={saving}
+      onSave={handleSave}
+      onSaveDraft={handleSaveDraft}
+      onPickImage={pickImage}
+    />
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 24,
-  },
-  inner: {
-    flexGrow: 1,
-  },
-  date: {
-    fontSize: 18,
-    color: '#1D9E75',
-    fontWeight: '600',
-    marginBottom: 20,
-    marginTop: 8,
-    letterSpacing: 0.5,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8F8F3',
-    paddingBottom: 16,
-  },
-  input: {
-    flex: 1,
-    fontSize: 17,
-    lineHeight: 28,
-    color: '#333',
-    textAlignVertical: 'top',
-    minHeight: 200,
-  },
-  photoList: {
-    marginVertical: 12,
-  },
-  photoWrapper: {
-    marginRight: 8,
-    position: 'relative',
-  },
-  photo: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
-  photoDelete: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    borderRadius: 99,
-    width: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  photoDeleteText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  photoButton: {
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 0.5,
-    borderColor: '#1D9E75',
-    alignItems: 'center',
-    marginVertical: 12,
-  },
-  photoButtonText: {
-    fontSize: 14,
-    color: '#1D9E75',
-    fontWeight: '500',
-  },
-  button: {
-    backgroundColor: '#1D9E75',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: '#1D9E75',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  buttonDisabled: {
-    backgroundColor: '#aaa',
-    shadowOpacity: 0,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
-})

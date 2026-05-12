@@ -1,61 +1,91 @@
 import { Stack, useRouter, useSegments } from 'expo-router'
-import { TouchableOpacity, Text } from 'react-native'
+import { View, ActivityIndicator } from 'react-native'
 import { useEffect, useState } from 'react'
 import { supabase } from '../utils/supabase'
 import { Session } from '@supabase/supabase-js'
+import { ThemeProvider, useTheme } from '../utils/theme'
+import { hasSeenOnboarding } from '../utils/onboarding'
 
-export default function RootLayout() {
+function RootLayoutInner() {
+  const { accent, card, text } = useTheme()
   const [session, setSession] = useState<Session | null>(null)
   const [initialized, setInitialized] = useState(false)
+  const [onboardingChecked, setOnboardingChecked] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const router = useRouter()
   const segments = useSegments()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    Promise.all([
+      supabase.auth.getSession(),
+      hasSeenOnboarding(),
+    ]).then(([{ data: { session } }, seen]) => {
       setSession(session)
+      setShowOnboarding(!seen && !session)
       setInitialized(true)
+      setOnboardingChecked(true)
     })
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   useEffect(() => {
     if (!initialized) return
-
     const inAuthGroup = segments[0] === '(tabs)'
+    if (showOnboarding && segments[0] !== 'onboarding') {
+      router.replace('/onboarding')
+    } else if (!session && inAuthGroup) {
+      router.replace('/login')
+    } else if (session && !inAuthGroup && segments[0] !== 'onboarding') {
+      router.replace('/(tabs)')
+    }
+  }, [session, initialized, showOnboarding])
 
-    // 開発中は認証スキップ
-  // if (!session && inAuthGroup) {
-  //   router.replace('/login')
-  // } else if (session && !inAuthGroup) {
-  //   router.replace('/(tabs)')
-  // }
-  }, [session, initialized])
+  if (!initialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: card }}>
+        <ActivityIndicator color={accent} size="large" />
+      </View>
+    )
+  }
 
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: card },
+        headerTitleStyle: { color: text },
+        headerTintColor: accent,
+      }}
+    >
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="diary/[id]"
-        options={{
-          title: '日記',
-          headerTintColor: '#1D9E75',
-          headerBackTitle: '戻る',
-        }}
-      />
-      <Stack.Screen
-        name="diary/new"
-        options={{
-          title: '新しい日記',
-          headerTintColor: '#1D9E75',
-          headerBackTitle: '戻る',
-          presentation: 'modal',
-        }}
-      />
+      <Stack.Screen name="diary/[id]" options={{ title: '日記', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="diary/new" options={{ title: '新しい日記', headerBackTitle: '戻る', presentation: 'modal' }} />
+      <Stack.Screen name="diary/edit" options={{ title: '日記を編集', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="episode/[id]" options={{ title: 'エピソード', headerBackTitle: '戻る' }} />
+
+      <Stack.Screen name="import" options={{ title: '日記を取り込む', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="vocab" options={{ title: '単語帳', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="drafts" options={{ title: '下書き', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="tags" options={{ title: 'タグ管理', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="episodes" options={{ title: 'エピソード', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="account" options={{ title: 'アカウント', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="draft/[id]" options={{ title: '下書きを編集', headerBackTitle: '戻る' }} />
+      <Stack.Screen name="recommend" options={{ title: '話のタネを見つける', headerBackTitle: '戻る' }} />
     </Stack>
+  )
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
   )
 }
