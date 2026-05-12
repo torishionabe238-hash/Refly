@@ -481,16 +481,22 @@ export default function DiaryDetail() {
           )}
         </View>
 
-        {/* key={card} でテーマ切替時に再マウント → WebView 内の配色を更新 */}
-        <WebView
-          key={card}
-          source={{ html: buildHtml(diary.content, card, text) }}
-          style={{ height: bodyHeight, backgroundColor: card }}
-          scrollEnabled={false}
-          showsVerticalScrollIndicator={false}
-          onMessage={e => setBodyHeight(Number(e.nativeEvent.data) + 8)}
-          injectedJavaScript="setTimeout(()=>window.ReactNativeWebView.postMessage(String(document.documentElement.scrollHeight)),120);true;"
-        />
+        {/* 日記本文 */}
+        {Platform.OS === 'web' ? (
+          <Text style={{ fontSize: 17, lineHeight: 30, color: text, paddingHorizontal: 16, paddingVertical: 8 }}>
+            {stripHtml(diary.content)}
+          </Text>
+        ) : (
+          <WebView
+            key={card}
+            source={{ html: buildHtml(diary.content, card, text) }}
+            style={{ height: bodyHeight, backgroundColor: card }}
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
+            onMessage={e => setBodyHeight(Number(e.nativeEvent.data) + 8)}
+            injectedJavaScript="setTimeout(()=>window.ReactNativeWebView.postMessage(String(document.documentElement.scrollHeight)),120);true;"
+          />
+        )}
 
         {diary.photos?.length > 0 && (
           <PhotoGrid
