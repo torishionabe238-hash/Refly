@@ -483,7 +483,7 @@ export default function DiaryDetail() {
 
         {/* 日記本文 */}
         {Platform.OS === 'web' ? (
-          <Text style={{ fontSize: 17, lineHeight: 30, color: text, paddingHorizontal: 16, paddingVertical: 8 }}>
+          <Text style={{ fontSize: 17, lineHeight: 30, color: text, paddingHorizontal: 16, paddingVertical: 8, textAlign: 'left' }}>
             {stripHtml(diary.content)}
           </Text>
         ) : (
