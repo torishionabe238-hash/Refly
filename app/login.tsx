@@ -132,6 +132,9 @@ function makeStyles(t: Theme) {
   return StyleSheet.create({
     bg: {
       flex: 1,
+      overflow: 'hidden',
+      width: '100%',
+      height: '100%',
     },
     container: {
       flex: 1,

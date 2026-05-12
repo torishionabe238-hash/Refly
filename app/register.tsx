@@ -113,7 +113,7 @@ export default function RegisterScreen() {
 
 function makeStyles(t: Theme) {
   return StyleSheet.create({
-    bg: { flex: 1 },
+    bg: { flex: 1, overflow: 'hidden', width: '100%', height: '100%' },
     container: {
       flex: 1, paddingHorizontal: 28,
       justifyContent: 'center', paddingTop: 20,
