@@ -30,6 +30,11 @@ export default function TabLayout() {
           backgroundColor: card,
           borderTopWidth: 0.5,
           borderTopColor: border,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        tabBarItemStyle: {
+          maxWidth: 120,
         },
         tabBarLabelStyle: {
           fontSize: 11,
