@@ -59,6 +59,7 @@ function RootLayoutInner() {
         headerStyle: { backgroundColor: card },
         headerTitleStyle: { color: text },
         headerTintColor: accent,
+        headerTitleAlign: 'center',
       }}
     >
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />

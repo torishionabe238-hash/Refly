@@ -24,17 +24,13 @@ export default function TabLayout() {
         headerStyle: { backgroundColor: card },
         headerTitleStyle: { color: text },
         headerTintColor: accent,
+        headerTitleAlign: 'center',
         tabBarActiveTintColor: accent,
         tabBarInactiveTintColor: sub,
         tabBarStyle: {
           backgroundColor: card,
           borderTopWidth: 0.5,
           borderTopColor: border,
-          justifyContent: 'center',
-          alignItems: 'center',
-        },
-        tabBarItemStyle: {
-          maxWidth: 120,
         },
         tabBarLabelStyle: {
           fontSize: 11,
