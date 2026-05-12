@@ -8,7 +8,7 @@ import { supabase } from '../utils/supabase'
 import BottomSheet from '../components/BottomSheet'
 import { useTheme, Theme } from '../utils/theme'
 
-const MASTRA_URL = 'http://10.1.62.38:4111'
+const MASTRA_URL = process.env.EXPO_PUBLIC_MASTRA_URL ?? 'http://10.1.62.38:4111'
 
 type DiaryEntry = { date: string; content: string }
 type Step = 'idle' | 'analyzing' | 'preview' | 'saving' | 'done'

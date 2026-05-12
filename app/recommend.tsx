@@ -10,7 +10,7 @@ import ThinkingIndicator from '../components/ThinkingIndicator'
 import { stripHtml } from './diary/[id]'
 import { useTheme, Theme } from '../utils/theme'
 
-const MASTRA_URL = 'http://10.1.62.38:4111'
+const MASTRA_URL = process.env.EXPO_PUBLIC_MASTRA_URL ?? 'http://10.1.62.38:4111'
 
 type Recommendation = {
   diary_id: string

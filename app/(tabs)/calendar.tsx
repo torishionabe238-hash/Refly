@@ -6,7 +6,10 @@ import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } fr
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useNavigation } from '@react-navigation/native'
 import { supabase } from '../../utils/supabase'
-import PagerView from 'react-native-pager-view'
+import { Platform } from 'react-native'
+const PagerView = Platform.OS === 'web'
+  ? ({ children, style }: any) => <View style={style}>{children[1]}</View>
+  : require('react-native-pager-view').default
 import BottomSheet from '../../components/BottomSheet'
 import ThinkingIndicator from '../../components/ThinkingIndicator'
 import DiaryCard from '../../components/DiaryCard'
@@ -14,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { stripHtml } from '../diary/[id]'
 import { useTheme, Theme } from '../../utils/theme'
 
-const MASTRA_URL = 'http://10.1.62.38:4111'
+const MASTRA_URL = process.env.EXPO_PUBLIC_MASTRA_URL ?? 'http://10.1.62.38:4111'
 const SCREEN_WIDTH = Dimensions.get('window').width
 // 6行分のグリッド高さを基準に dayHeight を計算（月ごとに行数で割って均等化）
 const DAY_GRID_H = 6 * 62

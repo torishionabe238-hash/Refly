@@ -1,8 +1,11 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ScrollView, Alert, KeyboardAvoidingView, Platform, Modal } from 'react-native'
 import { useState, useRef, useMemo } from 'react'
 import { Ionicons } from '@expo/vector-icons'
-import WebView from 'react-native-webview'
 import { useTheme, Theme } from '../utils/theme'
+
+const WebView = Platform.OS === 'web'
+  ? () => null
+  : require('react-native-webview').default
 
 type Props = {
   dateLabel: string
@@ -255,19 +258,31 @@ export default function DiaryEditor({ dateLabel, saving, initialContentHTML = ''
         </>
       )}
 
-      {/* WebView エディタ */}
-      <WebView
-        ref={webViewRef}
-        source={{ html: editorHtml }}
-        style={styles.webview}
-        onLoad={onLoad}
-        onMessage={onMessage}
-        scrollEnabled
-        keyboardDisplayRequiresUserAction={false}
-        showsVerticalScrollIndicator={false}
-        originWhitelist={['*']}
-        hideKeyboardAccessoryView
-      />
+      {/* エディタ */}
+      {Platform.OS === 'web' ? (
+        <TextInput
+          style={[styles.webEditor, { color: text, backgroundColor: card }]}
+          multiline
+          placeholder="今日のことを書いてみよう..."
+          placeholderTextColor={sub}
+          value={contentHtml.replace(/<[^>]*>/g, '')}
+          onChangeText={v => setContentHtml(v ? `<p>${v.replace(/\n/g, '</p><p>')}</p>` : '')}
+          textAlignVertical="top"
+        />
+      ) : (
+        <WebView
+          ref={webViewRef}
+          source={{ html: editorHtml }}
+          style={styles.webview}
+          onLoad={onLoad}
+          onMessage={onMessage}
+          scrollEnabled
+          keyboardDisplayRequiresUserAction={false}
+          showsVerticalScrollIndicator={false}
+          originWhitelist={['*']}
+          hideKeyboardAccessoryView
+        />
+      )}
 
       {/* 写真 */}
       {photos.length > 0 && (
@@ -289,8 +304,8 @@ export default function DiaryEditor({ dateLabel, saving, initialContentHTML = ''
         </ScrollView>
       )}
 
-      {/* カラーパレット */}
-      {showColors && (
+      {/* カラーパレット（ネイティブのみ） */}
+      {Platform.OS !== 'web' && showColors && (
         <View style={styles.colorPalette}>
           {COLORS.map(c => (
             <TouchableOpacity
@@ -305,8 +320,8 @@ export default function DiaryEditor({ dateLabel, saving, initialContentHTML = ''
         </View>
       )}
 
-      {/* フォーマットツールバー */}
-      <View style={styles.toolbar}>
+      {/* フォーマットツールバー（ネイティブのみ） */}
+      {Platform.OS !== 'web' && <View style={styles.toolbar}>
         <TouchableOpacity style={[styles.fmtBtn, fmt.bold && styles.fmtBtnActive]} onPress={() => exec('bold')}>
           <Text style={[styles.fmtBold, fmt.bold && styles.fmtTextActive]}>B</Text>
         </TouchableOpacity>
@@ -336,7 +351,7 @@ export default function DiaryEditor({ dateLabel, saving, initialContentHTML = ''
         <TouchableOpacity style={styles.fmtBtn} onPress={() => exec('redo')}>
           <Ionicons name="arrow-redo-outline" size={17} color={sub} />
         </TouchableOpacity>
-      </View>
+      </View>}
 
       {/* 選択中タグ（コンパクト表示） */}
       {currentTags.length > 0 && (
@@ -472,6 +487,7 @@ function makeStyles(t: Theme) {
     menuItemText: { fontSize: 15, fontWeight: '600', color: t.text },
     menuDivider: { height: 0.5, backgroundColor: t.border, marginHorizontal: 14 },
     webview: { flex: 1, backgroundColor: t.card },
+    webEditor: { flex: 1, fontSize: 17, lineHeight: 28, padding: 16, textAlignVertical: 'top' },
     photoList: { maxHeight: 130, flexShrink: 0 },
     photoWrapper: { position: 'relative' },
     photo: { width: 100, height: 100, borderRadius: 12 },

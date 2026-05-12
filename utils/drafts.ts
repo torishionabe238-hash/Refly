@@ -1,6 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy'
-
-const DRAFTS_PATH = FileSystem.documentDirectory + 'refly_drafts.json'
+import { storageGet, storageSet } from './storage'
 
 export type Draft = {
   id: string
@@ -9,23 +7,23 @@ export type Draft = {
   savedAt: string
 }
 
+const KEY = 'refly_drafts'
+
 const toPreview = (html: string) =>
   html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
 
 export const getDrafts = async (): Promise<Draft[]> => {
   try {
-    const info = await FileSystem.getInfoAsync(DRAFTS_PATH)
-    if (!info.exists) return []
-    const json = await FileSystem.readAsStringAsync(DRAFTS_PATH)
-    return JSON.parse(json)
-  } catch (_e) { return [] }
+    const json = await storageGet(KEY)
+    return json ? JSON.parse(json) : []
+  } catch { return [] }
 }
 
-const writeDrafts = async (drafts: Draft[]): Promise<void> => {
-  await FileSystem.writeAsStringAsync(DRAFTS_PATH, JSON.stringify(drafts))
+const writeDrafts = async (drafts: Draft[]) => {
+  await storageSet(KEY, JSON.stringify(drafts))
 }
 
-export const saveDraft = async (draft: Draft): Promise<void> => {
+export const saveDraft = async (draft: Draft) => {
   const drafts = await getDrafts()
   const idx = drafts.findIndex(d => d.id === draft.id)
   if (idx >= 0) drafts[idx] = draft
@@ -33,7 +31,7 @@ export const saveDraft = async (draft: Draft): Promise<void> => {
   await writeDrafts(drafts)
 }
 
-export const deleteDraft = async (id: string): Promise<void> => {
+export const deleteDraft = async (id: string) => {
   const drafts = await getDrafts()
   await writeDrafts(drafts.filter(d => d.id !== id))
 }

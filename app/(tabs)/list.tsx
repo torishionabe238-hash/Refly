@@ -7,7 +7,10 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { supabase } from '../../utils/supabase'
 import { getTagOrder, applyTagOrder } from '../../utils/tags'
-import PagerView from 'react-native-pager-view'
+import { Platform } from 'react-native'
+const PagerView = Platform.OS === 'web'
+  ? ({ children, style }: any) => <View style={style}>{children}</View>
+  : require('react-native-pager-view').default
 import { Calendar } from 'react-native-calendars'
 import { useTheme, Theme } from '../../utils/theme'
 

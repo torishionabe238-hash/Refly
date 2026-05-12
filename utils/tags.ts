@@ -1,21 +1,15 @@
 import { supabase } from './supabase'
-import * as FileSystem from 'expo-file-system/legacy'
-
-const ORDER_FILE = `${FileSystem.documentDirectory}tag_order.json`
+import { storageGet, storageSet } from './storage'
 
 export async function getTagOrder(): Promise<string[]> {
   try {
-    const info = await FileSystem.getInfoAsync(ORDER_FILE)
-    if (!info.exists) return []
-    const content = await FileSystem.readAsStringAsync(ORDER_FILE)
-    return JSON.parse(content)
+    const json = await storageGet('tag_order')
+    return json ? JSON.parse(json) : []
   } catch { return [] }
 }
 
 export async function saveTagOrder(ids: string[]): Promise<void> {
-  try {
-    await FileSystem.writeAsStringAsync(ORDER_FILE, JSON.stringify(ids))
-  } catch { }
+  await storageSet('tag_order', JSON.stringify(ids))
 }
 
 export function applyTagOrder<T extends { id: string }>(items: T[], order: string[]): T[] {

@@ -3,15 +3,20 @@ import ThinkingIndicator from '../../components/ThinkingIndicator'
 import { LinearGradient } from 'expo-linear-gradient'
 import AuroraGradient from '../../components/AuroraGradient'
 import { Ionicons } from '@expo/vector-icons'
-import WebView from 'react-native-webview'
-import PagerView from 'react-native-pager-view'
+import { Platform } from 'react-native'
+const WebView = Platform.OS === 'web'
+  ? ({ style }: any) => <View style={style} />
+  : require('react-native-webview').default
+const PagerView = Platform.OS === 'web'
+  ? ({ children, style }: any) => <View style={[style, { overflow: 'scroll' }]}>{children}</View>
+  : require('react-native-pager-view').default
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../../utils/supabase'
 import { useNavigation } from 'expo-router'
 import { useTheme, Theme } from '../../utils/theme'
 
-const MASTRA_URL = 'http://10.1.62.38:4111'
+const MASTRA_URL = process.env.EXPO_PUBLIC_MASTRA_URL ?? 'http://10.1.62.38:4111'
 
 type Diary = {
   id: string

@@ -4,7 +4,9 @@ import { useRouter } from 'expo-router'
 import { supabase } from '../utils/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import { useTheme, THEME_COLORS, Theme } from '../utils/theme'
-import DateTimePicker from '@react-native-community/datetimepicker'
+const DateTimePicker = Platform.OS === 'web'
+  ? () => null
+  : require('@react-native-community/datetimepicker').default
 import { getNotificationPrefs, saveNotificationPrefs, requestPermission, scheduleReminder, cancelReminder } from '../utils/notifications'
 
 export default function AccountScreen() {

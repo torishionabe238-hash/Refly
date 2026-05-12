@@ -1,14 +1,10 @@
-import * as FileSystem from 'expo-file-system/legacy'
-
-const FLAG_FILE = `${FileSystem.documentDirectory}onboarding_done.json`
+import { storageGet, storageSet } from './storage'
 
 export async function hasSeenOnboarding(): Promise<boolean> {
-  try {
-    const info = await FileSystem.getInfoAsync(FLAG_FILE)
-    return info.exists
-  } catch { return false }
+  const val = await storageGet('onboarding_done')
+  return val !== null
 }
 
 export async function markOnboardingDone(): Promise<void> {
-  await FileSystem.writeAsStringAsync(FLAG_FILE, '1')
+  await storageSet('onboarding_done', '1')
 }
